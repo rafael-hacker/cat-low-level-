@@ -18,10 +18,23 @@
 void cat(const char *filename){
 	char buffer[(1024 * 8)];
 	long wb;
+	int fd;
+
+	asm volatile (
+		"syscall"
+		: "=a", (fd)
+		: "a" (2), "D" (0), "S" (filename)
+		: "rcx", "r11", "memory"
+	);
+	
+	if (fd < 0){
+		exit(1);
+	}
+
 	asm volatile(
 		"syscall"
 		: "=a" (wb)
-		: "a" (0), "D" (0), "S" (buffer),"d" (sizeof(buffer))
+		: "a" (0), "D" (fd), "S" (buffer),"d" (sizeof(buffer))
 		: "rcx", "r11", "memory"
 	);
 
@@ -37,15 +50,8 @@ void cat(const char *filename){
 }
 
 void cat_stdin(){
-	int fd;
 	char buffer[(1024 * 8)];
 	long wb;
-	asm volatile(
-		"syscall"
-		: "=a" (fd)
-		: "a" (2), "D" (0), "S" (0)
-		: "r11", "rcx", "memory"
-	);
 	asm volatile (
 		"syscall"
 		: "=a" (wb)
