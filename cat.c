@@ -16,23 +16,12 @@
 
 
 void cat(const char *filename){
-	int fd;
 	char buffer[(1024 * 8)];
 	long wb;
-	asm volatile (
-		"syscall"
-		:"=a" (fd)
-		: "a" (2), "D" (filename), "S" (0)
-		: "r11", "memory", "rcx"
-	);
-
-	if (fd < 0){
-		exit(1);
-	}
 	asm volatile(
 		"syscall"
 		: "=a" (wb)
-		: "a" (0), "D" (fd), "S" (buffer),"d" (sizeof(buffer))
+		: "a" (0), "D" (0), "S" (buffer),"d" (sizeof(buffer))
 		: "rcx", "r11", "memory"
 	);
 
