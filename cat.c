@@ -67,6 +67,35 @@ void cat(const char *filename){
 	
 	
 }
+void cat_list(const char *path){                                // flag -l for list all archives 
+  int fd;
+  asm volatile(
+    "syscall"
+    : "=a" (fd)
+    : "a" (2), "D" (path), "S" (0), "d" (0x100000)
+    : "rcx", "r11", "memory"
+  );
+  if (fd < 0){
+    exit(1);
+  }
+
+  long nread;
+  char buf[(32 * 1024)];
+  asm volatile(
+    "syscall"
+    : "=a" (nread)
+    : "a" (217), "D" (fd), "S" (buf), "d" (sizeof(buf))
+    : "rcx", "r11", "memory"
+  );
+  int bpos = 0;
+  while(bpos < nread){
+    char *name = (bpos + buf + 19);        // this 19 is the posiction of d_name 
+
+    write(1, name, sizeof(name));
+
+    unsigned short d_reclen = *(unsigned short *)(buf + bpos + 16);
+  }
+}
 
 int strcmp(const char *s1, const char *s2){
   int i = 0;
@@ -74,23 +103,6 @@ int strcmp(const char *s1, const char *s2){
     i++;
   }
   return (unsigned long)s1 - (unsigned long)s2; // if s1 = s2 return 0 
-}
-
-void cat_stdin(){
-	char buffer[(1024 * 8)];
-	long wb;
-	asm volatile (
-		"syscall"
-		: "=a" (wb)
-		: "a" (0), "D" (0), "S" (buffer), "d" (sizeof(buffer))
-		: "r11", "memory", "rcx"
-	);
-	asm volatile (
-		"syscall"
-		:
-		: "a" (1), "D" (1), "S" (buffer), "d" (wb)
-		: "rcx", "r11", "memory"
-	);
 }
 
 void cat_lines(const char *filename){ // need the flag -n for use this function 
@@ -126,8 +138,14 @@ void c_start(long *sp){                              // pointer of the type long
       write(1, cat_menu, len(cat_menu));
       exit(0);
     }
-		cat_stdin();	
-	}
+  }
+  
+	if (argc == 2){
+    if (strcmp(argv[1], "-l") == 0){
+      cat_list(argv[2]);
+      exit(0);
+    }
+  }	
 	for (int i = 1; i < argc; i++){                   // from accept more arguments  
 		if (strcmp(argv[1], "-n") == 0){
       cat_lines(argv[i]);
