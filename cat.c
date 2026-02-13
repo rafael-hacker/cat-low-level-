@@ -32,7 +32,7 @@ long read(int fd, char *buf, unsigned long size){
   );
   return ret;
 }
-#define cat_menu "-h for help menu \n cat -n [archive] for cont lines of archive \n no flags from cat stdin \n cat [archive] from the basic cat \n"
+#define cat_menu "-h for help menu \n cat -n [archive] for cont lines of archive\n cat [archive] from the basic cat \n"
 
 void cat(const char *filename){
 	char buffer[(1024 * 8)];
@@ -42,7 +42,7 @@ void cat(const char *filename){
 	asm volatile (
 		"syscall"
 		: "=a" (fd)
-		: "a" (2), "D" (0), "S" (filename)
+		: "a" (2), "D" (filename), "S" (0)
 		: "rcx", "r11", "memory"
 	);
 	
@@ -72,7 +72,7 @@ void cat_list(const char *path){                                // flag -l for l
   asm volatile(
     "syscall"
     : "=a" (fd)
-    : "a" (2), "D" (path), "S" (0), "d" (0x100000)
+    : "a" (2), "D" (path), "S" (0), "d" (0x10000)
     : "rcx", "r11", "memory"
   );
   if (fd < 0){
@@ -90,10 +90,11 @@ void cat_list(const char *path){                                // flag -l for l
   int bpos = 0;
   while(bpos < nread){
     char *name = (bpos + buf + 19);        // this 19 is the posiction of d_name 
-
-    write(1, name, sizeof(name));
-
+    write(1, "-> ", 3);
+    write(1, name, len(name));
+    write(1, "\n", 1);
     unsigned short d_reclen = *(unsigned short *)(buf + bpos + 16);
+    bpos += d_reclen;
   }
 }
 
@@ -102,7 +103,7 @@ int strcmp(const char *s1, const char *s2){
   while(s1[i] == s2[i] && s1[i] != '\0'){
     i++;
   }
-  return (unsigned long)s1 - (unsigned long)s2; // if s1 = s2 return 0 
+  return (unsigned long)s1[i] - (unsigned long)s2[i]; // if s1 = s2 return 0 
 }
 
 void cat_lines(const char *filename){ // need the flag -n for use this function 
@@ -117,45 +118,59 @@ void cat_lines(const char *filename){ // need the flag -n for use this function
     exit(1);
   }
 
-  char buf[1024 * 21];
+  char buf[1];
 
-  read(fd, buf, sizeof(buf));
-  int i = 0;
-  while (buf[i] != '\0'){
-    i++;
+  long i = 0;
+  while (read(fd, buf, 1) > 0){ // this part counting lines 
+    if (buf[0] == '\n'){
+      i++;
+    }
   }
 
-  char result = (i % 10) + 40;
-  write(1, result, sizeof(result));
+  if (i == 0){
+    write(1, "0", 1);
+    exit(0);
+  }
+  char buffer[20];
+  int n = 0;
+
+  while (i > 0){
+    buffer[n++] = (i % 10) + 48;               // this part transform int in ansii
+    i /= 10;
+  }
+  buf[n] = '\n';
+  while(n--){
+    write(1, &buffer[n], 1);
+  }
+  exit(0);
 }
+
 
 void c_start(long *sp){                              // pointer of the type long resposability for being argc 
 	int argc = (int)*sp;                              // here is argc 
 	char **argv = (char **)(sp + 1);                 // here is jumping 8 bytes for go to argv
 	
-	if (argc == 1){
+	if (argc == 2){
     if (strcmp(argv[1], "-h") == 0){
       write(1, cat_menu, len(cat_menu));
       exit(0);
     }
   }
   
-	if (argc == 2){
+	if (argc == 3){
     if (strcmp(argv[1], "-l") == 0){
       cat_list(argv[2]);
       exit(0);
     }
   }	
-	for (int i = 1; i < argc; i++){                   // from accept more arguments  
-		if (strcmp(argv[1], "-n") == 0){
-      cat_lines(argv[i]);
-    }
-    cat(argv[i]);
-	}
-
-	exit(0);
+    if (argc == 3){               
+		  if (strcmp(argv[1], "-n") == 0){
+        cat_lines(argv[2]);
+      }
+}
 }
 
+    
 void __attribute__((naked)) _start(){
 	
 	asm volatile(
