@@ -114,19 +114,19 @@ void cat_lines(const char *filename){ // need the flag -n for use this function
       : "a" (2), "D" (filename), "S" (0)
       : "rcx", "r11", "memory"
       );
+
   if (fd < 0){
     exit(1);
   }
 
-  char buf[1];
+  char buf[1899];
 
   long i = 0;
-  while (read(fd, buf, 1) > 0){ // this part counting lines 
+  while (read(fd, buf, sizeof(fd)) > 0){ // this part counting lines 
     if (buf[0] == '\n'){
       i++;
     }
   }
-
   if (i == 0){
     write(1, "0", 1);
     exit(0);
@@ -163,10 +163,14 @@ void c_start(long *sp){                              // pointer of the type long
       exit(0);
     }
   }	
-    if (argc == 3){               
+
+    for (int i=1; i < argc; i++){               
 		  if (strcmp(argv[1], "-n") == 0){
-        cat_lines(argv[2]);
+        cat_lines(argv[i]);
       }
+    for (int i = 1; i < argc; i++){
+      cat(argv[i]);
+    }
 }
 }
 
